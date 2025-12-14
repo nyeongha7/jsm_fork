@@ -1,0 +1,52 @@
+import os
+os.chdir('C:')
+
+import glob
+file_name = glob.glob("deal*xls")
+
+
+import pandas as pd
+data = pd.DataFrame(columns = ['거래량','월'])
+for name in file_name:
+    d1 = pd.read_excel(name)
+    d2 = pd.DataFrame()
+    d2['거래량'] = d1.drop('합계', axis=1).set_index('구분').loc['수원시']
+    d2['월'] = range(1,13)
+    data = pd.concat([data, d2], ignore_index=True)
+    
+    
+    
+data['연'] = [year for year in range(2011, 2025) for _ in range(12)]
+
+
+df = pd.read_excel('금리.xlsx')
+
+final = pd.merge(data, df, on = ['연','월'], how='right')
+
+
+final.info()
+final['월'] = final['월'].astype('int')
+
+for i in range(final.shape[0]):
+    final['거래량'][i] = final['거래량'][i].replace(',','')
+    
+final['거래량'] = final['거래량'].astype('int')
+
+
+
+final_dum = pd.get_dummies(final , columns = ['연','월'] , dtype = 'int')
+
+
+X = final_dum.drop('거래량', axis= 1)
+y = final_dum['거래량']
+
+
+import statsmodels.api as sm
+X_ad = sm.add_constant(X)
+lr = sm.OLS(y,X_ad).fit()
+lr.summary()
+
+
+y_pred = lr.predict(X_ad)
+
+y_pred.to_csv('y_pred.csv', header = False, index=False)
